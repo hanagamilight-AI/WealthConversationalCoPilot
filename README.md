@@ -1,6 +1,72 @@
 # Wealth & Portfolio Conversational Co-Pilot
 
-A multi-turn financial assistant for retail banking or wealth management clients, deployed as a Telegram bot.
+A multi-turn financial assistant for retail banking or wealth management clients, deployed as a Telegram bot. It discusses market trends, explains complex financial concepts, analyzes user portfolios, and simulates "what-if" retirement scenarios while adhering to strict compliance guardrails.
+
+## System Architecture
+
+```mermaid
+graph TD
+    User[Telegram User] -->|Message| Bot[Telegram Bot Handler]
+    
+    subgraph "Input Processing Layer"
+        Bot -->|Raw Text| Intent[Intent Classifier SLM]
+        Intent -->|Simple Query| SimpleResponse[Direct Response]
+        Intent -->|Complex Query| Router[Request Router]
+    end
+    
+    subgraph "Memory Layer (Context Engineering)"
+        Router -->|Retrieve Context| Episodic[Episodic Memory - Short-term Dialogue]
+        Router -->|Retrieve Profile| Semantic[Semantic Memory - Long-term User Profile]
+        Episodic -->|Context Window| Router
+        Semantic -->|Risk/Goals| Router
+    end
+    
+    subgraph "Knowledge & Tools Layer"
+        Router -->|Market Data| MCP_Market[MCP Server: Market Data - Live Prices, SEC Filings]
+        Router -->|Calculations| MCP_Math[MCP Server: Portfolio Math - Monte Carlo, Compound Interest]
+        Router -->|Compliance Info| GraphRAG[Graph RAG Engine - Proprietary Research & Rules]
+    end
+    
+    subgraph "Governance Layer"
+        Router -->|Check Safety| Guardrails[LLM Guardrails - Compliance Checker]
+        Guardrails -->|Safe| LLM[Frontier LLM Engine]
+        Guardrails -->|Unsafe| Disclaimer[Mandatory Disclaimer]
+        GraphRAG -->|Regulations| Guardrails
+    end
+    
+    LLM -->|Generated Response| Bot
+    SimpleResponse -->|Answer| Bot
+    Disclaimer -->|Warning| Bot
+    Bot -->|Response| User
+    
+    style Intent fill:#f9f,stroke:#333,stroke-width:2px
+    style Guardrails fill:#f96,stroke:#333,stroke-width:2px
+    style MCP_Market fill:#9cf,stroke:#333,stroke-width:2px
+    style MCP_Math fill:#9cf,stroke:#333,stroke-width:2px
+```
+
+### 1. Input Processing Layer
+- **Intent Classifier (SLM)**: A lightweight, quantized model (e.g., Llama-3-8B) runs locally on every turn to classify user intent (Greeting, Data Request, Complaint, Financial Advice).
+  - *Purpose*: Efficiently routes simple queries to hardcoded responses, saving expensive frontier-LLM tokens for complex reasoning.
+- **Request Router**: Directs the flow based on intent classification.
+
+### 2. Memory Layer (Context Engineering)
+Implements a **Dual-Memory Architecture** to handle long financial conversations:
+- **Episodic Memory (Short-term)**: Maintains the current dialogue context using a sliding window approach. Tracks immediate conversation history (e.g., "You asked about Apple stock earlier...").
+- **Semantic Memory (Long-term)**: Stores vectorized user profiles containing risk tolerance, financial goals, and past advice. Retrieved at the start of every session to personalize the system prompt.
+
+### 3. Knowledge & Tools Layer (MCP)
+Uses **Model Context Protocol (MCP)** servers to offload specific tasks:
+- **MCP Server: Market Data**: Fetches live stock prices, company fundamentals, and SEC filings via external APIs (yfinance). Prevents LLM hallucination on real-time data.
+- **MCP Server: Portfolio Math**: Executes deterministic calculations locally (Monte Carlo simulations, compound interest, CAGR). Ensures mathematical accuracy.
+- **Graph RAG Engine**: Ingests proprietary bank research and compliance guidelines. Maps relationships between companies, sectors, and market trends to provide grounded answers.
+
+### 4. Governance Layer (Responsible AI)
+- **LLM Guardrails**: Implements strict safety checks (inspired by NeMo Guardrails).
+  - Intercepts high-risk intents (e.g., "Should I put my life savings into Bitcoin?").
+  - Hardcoded logic forces refusal of definitive financial advice.
+  - Automatically appends mandatory compliance disclaimers.
+- **Frontier LLM Engine**: Only invoked for safe, complex reasoning tasks requiring natural language generation and synthesis of retrieved context.
 
 ## Features
 
